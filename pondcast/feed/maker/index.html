@@ -120,13 +120,17 @@
     const sortedItems = items.sort((a, b) => a.pubDate - b.pubDate);
     let feedItems = [];
     for (const item of sortedItems) {
+      const itemLink = `http://www.todepond.com/pondcast/${titleToPath(
+        item.title
+      )}/`;
+      // TODO - add enclosure length of file
+      // TODO - add enclosure type of file (detect or decide if it's mp3 or m4a. potentially able to do that based on dates)
       const feedItem = `
         <item>
           <title>${item.title}</title>
-          <link>http://www.todepond.com/pondcast/${titleToPath(
-            item.title
-          )}/</link>
+          <link>${itemLink}</link>
           <pubDate>${convertDateToPubDateFormat(item.pubDate)}</pubDate>
+          <enclosure url="${itemLink}1.mp3" length="1024" type="audio/mpeg" />
         </item>
       `;
       feedItems.push(feedItem);
