@@ -125,7 +125,9 @@
         item.title
       )}/`;
       // TODO - add enclosure length of file
-      // TODO - add enclosure type of file (detect or decide if it's mp3 or m4a. potentially able to do that based on dates)
+      // TODO - add enclosure type of file (detect or decide if it's mp3 or m4a)
+      //        potentially able to do that based on dates
+      // potentially able to detect both based on attempting to load the files -> if found, get length as well
       const feedItem = `
         <item>
           <title>${item.title}</title>
