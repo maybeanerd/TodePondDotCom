@@ -117,23 +117,74 @@
     renderItems(items);
   });
 
-  function makeFeed(items) {
+  function getPathOnOrigin(path = '') {
+    return new URL(path, window.location.origin).toString();
+  }
+
+  async function getMediaItemsOfFeedItem(item) {
+    const mediaItemBasePath = getPathOnOrigin(
+      `pondcast/${titleToPath(item.title)}`
+    );
+    const potentialMediaItemFilenames = ['1.mp3', '1.m4a'];
+
+    const potentialMediaSources = potentialMediaItemFilenames.map(
+      (filename) => `${mediaItemBasePath}/${filename}`
+    );
+
+    const mediaItems = [];
+    await Promise.all(
+      potentialMediaSources.map(async (mediaPath) => {
+        try {
+          const response = await fetch(mediaPath, { method: 'HEAD' });
+          if (response.ok) {
+            const fileSize = response.headers.get('Content-Length');
+
+            if (!fileSize) {
+              console.error('Couldnt get filesize of item', mediaPath);
+              return;
+            }
+
+            mediaItems.push({
+              path: mediaPath,
+              fileSize,
+            });
+          }
+        } catch (error) {
+          // noop, we just want to ignore errors because we can't know which files should be available or not
+        }
+      })
+    );
+    return mediaItems;
+  }
+
+  function mapMediaItemsToEnclosures(mediaItems = []) {
+    return mediaItems
+      .map((mediaItem, index) => {
+        let enclosureTag = `<enclosure url="${mediaItem.path}" length="${mediaItem.fileSize}" type="audio/mpeg" />`;
+        // Unless last element, add a newline and two spaces (for identation)
+        if (index < mediaItem.length - 1) {
+          enclosureTag += '\n  ';
+        }
+        return enclosureTag;
+      })
+      .concat();
+  }
+
+  async function makeFeed(items = []) {
     const sortedItems = items.sort((a, b) => a.pubDate - b.pubDate);
     let feedItems = [];
+
     for (const item of sortedItems) {
-      const itemLink = `http://www.todepond.com/pondcast/${titleToPath(
-        item.title
-      )}/`;
-      // TODO - add enclosure length of file
-      // TODO - add enclosure type of file (detect or decide if it's mp3 or m4a)
-      //        potentially able to do that based on dates
-      // potentially able to detect both based on attempting to load the files -> if found, get length as well
+      const itemLink = getPathOnOrigin(`pondcast/${titleToPath(item.title)}`);
+
+      const mediaItems = await getMediaItemsOfFeedItem(item);
+
       const feedItem = `
         <item>
           <title>${item.title}</title>
           <link>${itemLink}</link>
           <pubDate>${convertDateToPubDateFormat(item.pubDate)}</pubDate>
-          <enclosure url="${itemLink}1.mp3" length="1024" type="audio/mpeg" />
+          ${mapMediaItemsToEnclosures(mediaItems)}
         </item>
       `;
       feedItems.push(feedItem);
@@ -143,7 +194,7 @@
       <rss version="2.0">
         <channel>
           <title>Todepond Pondcast</title>
-          <link>http://www.todepond.com/pondcast/</link>
+          <link>${getPathOnOrigin('pondcast')}</link>
           <description>weekly update from the pond</description>
             ${feedItems.join('\n')}
         </channel>
@@ -154,9 +205,10 @@
 
   const copyFeedButton = document.getElementById('copy-feed');
   let copiedCount = 0;
-  copyFeedButton.addEventListener('click', () => {
+  copyFeedButton.addEventListener('click', async () => {
     const items = deriveItems();
-    const rss = makeFeed(items);
+    copyFeedButton.textContent = 'Calculating feed...';
+    const rss = await makeFeed(items);
     const feed = document.createElement('textarea');
     feed.value = rss;
     document.body.appendChild(feed);
