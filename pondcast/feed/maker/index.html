@@ -209,13 +209,7 @@
     const items = deriveItems();
     copyFeedButton.textContent = 'Calculating feed...';
     const rss = await makeFeed(items);
-    const feed = document.createElement('textarea');
-    feed.value = rss;
-    document.body.appendChild(feed);
-    feed.select();
-    feed.setSelectionRange(0, 99999999);
-    document.execCommand('copy');
-    feed.remove();
+    navigator.clipboard.writeText(rss);
     copyFeedButton.textContent = 'Copied!';
     copiedCount++;
     if (copiedCount > 1) {
